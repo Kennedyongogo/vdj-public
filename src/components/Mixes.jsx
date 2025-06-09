@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,9 +7,22 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  CircularProgress,
+  Divider,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import AudiotrackIcon from "@mui/icons-material/Audiotrack";
+import MovieIcon from "@mui/icons-material/Movie";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import DownloadIcon from "@mui/icons-material/Download";
+
+const API_BASE_URL =
+  process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
 const Mixes = ({
   onNext,
@@ -21,13 +34,42 @@ const Mixes = ({
   navigate,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [mixes, setMixes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [playModalOpen, setPlayModalOpen] = useState(false);
+  const [currentMix, setCurrentMix] = useState(null);
 
   const handleOpenDialog = () => {
     setOpenDialog(true);
+    fetchMixes();
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+  };
+
+  const fetchMixes = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/mix`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch mixes");
+      }
+      const data = await response.json();
+      setMixes(data.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   return (
@@ -274,9 +316,178 @@ const Mixes = ({
           VDJ Kush Playlist
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: "white", mt: 2 }}>
-            Playlist content will go here...
-          </Typography>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress sx={{ color: "#fff" }} />
+            </Box>
+          ) : error ? (
+            <Typography sx={{ color: "error.main", textAlign: "center", p: 2 }}>
+              {error}
+            </Typography>
+          ) : (
+            <List sx={{ width: "100%", bgcolor: "transparent" }}>
+              {mixes.map((mix, index) => (
+                <React.Fragment key={mix.id}>
+                  <ListItem
+                    button={true}
+                    onClick={(e) => {
+                      // Row click handler
+                      console.log("Row clicked:", mix.title);
+                    }}
+                    sx={{
+                      "&:hover": {
+                        bgcolor: "rgba(255,255,255,0.1)",
+                      },
+                    }}
+                  >
+                    <ListItemIcon>
+                      {mix.fileType === "audio" ? (
+                        <AudiotrackIcon sx={{ color: "#19bdb7" }} />
+                      ) : (
+                        <MovieIcon sx={{ color: "#1976d2" }} />
+                      )}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={mix.title}
+                      secondary={
+                        <Box
+                          component="span"
+                          sx={{ display: "flex", flexDirection: "column" }}
+                        >
+                          <Typography
+                            variant="body2"
+                            sx={{ color: "rgba(255,255,255,0.7)" }}
+                          >
+                            {mix.description}
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "rgba(255,255,255,0.5)" }}
+                          >
+                            Duration: {formatDuration(mix.duration)} |
+                            Downloads: {mix.downloadCount}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                    <Box onClick={(e) => e.stopPropagation()}>
+                      <IconButton
+                        edge="end"
+                        aria-label="play"
+                        sx={{ color: "#19bdb7" }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setCurrentMix(mix);
+                          setPlayModalOpen(true);
+                        }}
+                      >
+                        <PlayArrowIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        aria-label="download"
+                        sx={{ color: "#fff" }}
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          try {
+                            // Trigger the file download
+                            const response = await fetch(
+                              `${API_BASE_URL}/api/mix/${mix.id}/download-file`
+                            );
+                            if (!response.ok)
+                              throw new Error("Download failed");
+
+                            // Get the blob from the response
+                            const blob = await response.blob();
+
+                            // Create a URL for the blob
+                            const url = window.URL.createObjectURL(blob);
+
+                            // Create a temporary link element
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = mix.title || "mix"; // Use mix title as filename
+
+                            // Append to body, click and remove
+                            document.body.appendChild(link);
+                            link.click();
+
+                            // Clean up
+                            document.body.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          } catch (err) {
+                            console.error("Error downloading file:", err);
+                            // Optionally show an error message to the user
+                          }
+                        }}
+                      >
+                        <DownloadIcon />
+                      </IconButton>
+                    </Box>
+                  </ListItem>
+                  {index < mixes.length - 1 && (
+                    <Divider sx={{ bgcolor: "rgba(255,255,255,0.1)" }} />
+                  )}
+                </React.Fragment>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Play Modal */}
+      <Dialog
+        open={playModalOpen}
+        onClose={() => setPlayModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            bgcolor: "rgba(0,0,0,0.95)",
+            color: "white",
+            borderRadius: "16px",
+            border: "1px solid rgba(255,255,255,0.1)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            textAlign: "center",
+            fontSize: "1.25rem",
+            fontWeight: "bold",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            pb: 2,
+          }}
+        >
+          Play Mix
+        </DialogTitle>
+        <DialogContent>
+          {currentMix && currentMix.fileType === "audio" && (
+            <audio
+              controls
+              style={{ width: "100%" }}
+              src={
+                currentMix.fileUrl.startsWith("http")
+                  ? currentMix.fileUrl
+                  : `${API_BASE_URL}${currentMix.fileUrl}`
+              }
+            />
+          )}
+          {currentMix &&
+            (currentMix.fileType === "video" ||
+              currentMix.fileType === "mp4") && (
+              <video
+                controls
+                style={{ width: "100%" }}
+                src={
+                  currentMix.fileUrl.startsWith("http")
+                    ? currentMix.fileUrl
+                    : `${API_BASE_URL}${currentMix.fileUrl}`
+                }
+              />
+            )}
         </DialogContent>
       </Dialog>
     </Box>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,9 +7,24 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Tabs,
+  Tab,
+  Button,
+  CardContent,
+  TextField,
+  List,
+  ListItem,
+  ListItemText,
+  CircularProgress,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import CommentIcon from "@mui/icons-material/Comment";
+import CloseIcon from "@mui/icons-material/Close";
+
+const API_BASE_URL =
+  process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
 const VDJKush = ({
   onNext,
@@ -30,13 +45,127 @@ const VDJKush = ({
     navigate,
   });
   const [openDialog, setOpenDialog] = useState(false);
+  const [trending, setTrending] = useState([]);
+  const [tab, setTab] = useState("all");
+  const [likeLoading, setLikeLoading] = useState({});
+  const [commentText, setCommentText] = useState({});
+  const [comments, setComments] = useState({});
+  const [commentLoading, setCommentLoading] = useState({});
+  const [expandedComments, setExpandedComments] = useState({});
+  const [loadingTrending, setLoadingTrending] = useState(false);
 
-  const handleOpenDialog = () => {
-    setOpenDialog(true);
+  useEffect(() => {
+    if (openDialog) {
+      fetchTrending();
+    }
+  }, [openDialog]);
+
+  const fetchTrending = async () => {
+    setLoadingTrending(true);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/trending?period=daily&limit=20`
+      );
+      const data = await res.json();
+      setTrending(data.data || []);
+      // Initialize comments state for new items
+      const newComments = {};
+      data.data?.forEach((item) => {
+        newComments[item.id] = [];
+      });
+      setComments((prev) => ({ ...prev, ...newComments }));
+    } catch (err) {
+      console.error("Error fetching trending:", err);
+      setTrending([]);
+    } finally {
+      setLoadingTrending(false);
+    }
   };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
+  const handleTabChange = (e, newValue) => setTab(newValue);
+
+  const filteredTrending = trending.filter((item) =>
+    tab === "all" ? true : item.contentType === tab
+  );
+
+  const handleLike = async (id) => {
+    // Optimistically update the trending count in the UI
+    setTrending((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? { ...item, likeCount: (item.likeCount || 0) + 1 }
+          : item
+      )
+    );
+
+    try {
+      await fetch(`${API_BASE_URL}/api/trending/${id}/like`, {
+        method: "POST",
+      });
+      // Optionally, you can refresh trending in the background if you want to sync with backend
+      // fetchTrending();
+    } catch (error) {
+      // If error, revert the optimistic update
+      setTrending((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, likeCount: Math.max(0, (item.likeCount || 1) - 1) }
+            : item
+        )
+      );
+      console.error("Error handling like:", error);
+    }
+  };
+
+  const handleComment = async (id) => {
+    if (!commentText[id]?.trim()) return;
+
+    try {
+      setCommentLoading((prev) => ({ ...prev, [id]: true }));
+      await fetch(`${API_BASE_URL}/api/trending/${id}/comment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment: commentText[id] }),
+      });
+
+      // Clear comment text
+      setCommentText((prev) => ({ ...prev, [id]: "" }));
+
+      // Refresh comments
+      await fetchComments(id);
+
+      // Refresh trending data to get updated engagement count
+      await fetchTrending();
+    } catch (error) {
+      console.error("Error adding comment:", error);
+    } finally {
+      setCommentLoading((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const fetchComments = async (id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/trending/${id}/comments`);
+      const data = await res.json();
+      if (data.success) {
+        setComments((prev) => ({ ...prev, [id]: data.data || [] }));
+      }
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    }
+  };
+
+  const handleToggleComments = async (id) => {
+    setExpandedComments((prev) => {
+      const isExpanded = !!prev[id];
+      if (isExpanded) {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      }
+      fetchComments(id);
+      return { ...prev, [id]: true };
+    });
   };
 
   const typographyElement = (
@@ -158,7 +287,7 @@ const VDJKush = ({
           {/* Trendingz label at bottom left */}
           <Typography
             variant="overline"
-            onClick={handleOpenDialog}
+            onClick={() => setOpenDialog(true)}
             sx={{
               position: "absolute",
               left: 0,
@@ -285,8 +414,8 @@ const VDJKush = ({
       {/* Trending Topics Dialog */}
       <Dialog
         open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="sm"
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: {
@@ -304,14 +433,128 @@ const VDJKush = ({
             fontWeight: "bold",
             borderBottom: "1px solid rgba(255,255,255,0.1)",
             pb: 2,
+            position: "relative",
           }}
         >
           VDJ Kush Trending Topics
+          <IconButton
+            aria-label="close"
+            onClick={() => setOpenDialog(false)}
+            sx={{
+              position: "absolute",
+              right: 8,
+              top: 8,
+              color: "white",
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: "white", mt: 2 }}>
-            Trending topics content will go here...
-          </Typography>
+          <Tabs
+            value={tab}
+            onChange={handleTabChange}
+            sx={{
+              mb: 2,
+              "& .MuiTab-root": { color: "#fff" }, // Unselected tab color
+              "& .Mui-selected": { color: "#fff" }, // Selected tab color
+              "& .MuiTabs-indicator": { backgroundColor: "#fff" }, // Indicator color
+            }}
+          >
+            <Tab label="All" value="all" />
+            <Tab label="Events" value="event" />
+            <Tab label="Mixes" value="mix" />
+          </Tabs>
+          {loadingTrending ? (
+            <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+              <CircularProgress color="inherit" />
+            </Box>
+          ) : filteredTrending.length === 0 ? (
+            <Typography sx={{ color: "white", textAlign: "center", mt: 4 }}>
+              No trending topics found.
+            </Typography>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              {filteredTrending.map((item) => (
+                <Card key={item.id} sx={{ mb: 2, bgcolor: "#fff" }}>
+                  <CardContent sx={{ color: "#000" }}>
+                    <Typography variant="h6">
+                      {item.content?.title ||
+                        item.content?.name ||
+                        "No content found"}
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      {item.content?.description}
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <IconButton
+                        onClick={() => handleLike(item.id)}
+                        disabled={likeLoading[item.id]}
+                      >
+                        <FavoriteIcon />
+                      </IconButton>
+                      <Typography variant="caption">
+                        {item.likeCount || 0} likes • {item.commentCount || 0}{" "}
+                        comments • {item.score?.toFixed(2)} score
+                      </Typography>
+                      <IconButton onClick={() => handleToggleComments(item.id)}>
+                        <CommentIcon />
+                      </IconButton>
+                    </Box>
+                    <Box sx={{ mt: 1 }}>
+                      <TextField
+                        size="small"
+                        placeholder="Add a comment"
+                        value={commentText[item.id] || ""}
+                        onChange={(e) =>
+                          setCommentText((prev) => ({
+                            ...prev,
+                            [item.id]: e.target.value,
+                          }))
+                        }
+                        onKeyPress={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleComment(item.id);
+                          }
+                        }}
+                        sx={{
+                          mr: 1,
+                          bgcolor: "rgba(255,255,255,0.1)",
+                          borderRadius: 1,
+                        }}
+                        InputProps={{ style: { color: "#000" } }}
+                      />
+                      <Button
+                        size="small"
+                        onClick={() => handleComment(item.id)}
+                        disabled={
+                          commentLoading[item.id] ||
+                          !commentText[item.id]?.trim()
+                        }
+                        sx={{ color: "#000", borderColor: "#000" }}
+                      >
+                        {commentLoading[item.id] ? "Posting..." : "Comment"}
+                      </Button>
+                    </Box>
+                    {/* Only show comments if expanded */}
+                    {expandedComments[item.id] && (
+                      <List dense>
+                        {(comments[item.id] || []).map((c, idx) => (
+                          <ListItem key={idx} sx={{ color: "#000" }}>
+                            <ListItemText
+                              primary={c.comment}
+                              secondary={new Date(c.createdAt).toLocaleString()}
+                            />
+                          </ListItem>
+                        ))}
+                      </List>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          )}
         </DialogContent>
       </Dialog>
     </Box>

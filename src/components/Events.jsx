@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -7,8 +7,16 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
+  Grid,
+  CardMedia,
+  CardContent,
+  Chip,
+  CircularProgress,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
+
+const API_BASE_URL =
+  process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
 const Events = ({
   onNext,
@@ -20,9 +28,44 @@ const Events = ({
   navigate,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleOpenDialog = () => setOpenDialog(true);
+  const handleOpenDialog = () => {
+    setOpenDialog(true);
+    fetchEvents();
+  };
+
   const handleCloseDialog = () => setOpenDialog(false);
+
+  const fetchEvents = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/event/public`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch events");
+      }
+      const data = await response.json();
+      setEvents(data.data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDateTime = (dateString) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
 
   return (
     <Box
@@ -159,6 +202,7 @@ const Events = ({
           </Typography>
         </Card>
       </Box>
+
       {/* Progressive Dots below the image card */}
       <Box
         sx={{
@@ -189,6 +233,7 @@ const Events = ({
             />
           ))}
       </Box>
+
       {/* SVG Wave Background at the bottom */}
       <Box
         sx={{
@@ -232,11 +277,12 @@ const Events = ({
           </defs>
         </svg>
       </Box>
+
       {/* Events Dialog */}
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="sm"
+        maxWidth="lg"
         fullWidth
         PaperProps={{
           sx: {
@@ -244,6 +290,7 @@ const Events = ({
             color: "white",
             borderRadius: "16px",
             border: "1px solid rgba(255,255,255,0.1)",
+            maxHeight: "90vh",
           },
         }}
       >
@@ -254,14 +301,147 @@ const Events = ({
             fontWeight: "bold",
             borderBottom: "1px solid rgba(255,255,255,0.1)",
             pb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          Events Dialog
+          <Box width={40} /> {/* Spacer for alignment */}
+          <Typography variant="h5" sx={{ flex: 1, textAlign: "center" }}>
+            Upcoming Events
+          </Typography>
+          <IconButton onClick={handleCloseDialog} sx={{ color: "white" }}>
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: "white", mt: 2 }}>
-            Events content will go here...
-          </Typography>
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+              <CircularProgress sx={{ color: "#fff" }} />
+            </Box>
+          ) : error ? (
+            <Typography sx={{ color: "error.main", textAlign: "center", p: 2 }}>
+              {error}
+            </Typography>
+          ) : (
+            <Grid container spacing={3} sx={{ mt: 1 }}>
+              {events.map((event) => (
+                <Grid item xs={12} sm={6} md={4} key={event.id}>
+                  <Card
+                    sx={{
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                      bgcolor: "rgba(255,255,255,0.05)",
+                      borderRadius: "12px",
+                      overflow: "hidden",
+                      transition: "transform 0.2s",
+                      "&:hover": {
+                        transform: "translateY(-4px)",
+                      },
+                    }}
+                  >
+                    {event.bannerUrl && (
+                      <CardMedia
+                        component="img"
+                        height="200"
+                        image={
+                          event.bannerUrl.startsWith("http")
+                            ? event.bannerUrl
+                            : `${API_BASE_URL}${event.bannerUrl}`
+                        }
+                        alt={event.name}
+                        sx={{ objectFit: "cover" }}
+                      />
+                    )}
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Typography
+                        variant="h6"
+                        component="h2"
+                        gutterBottom
+                        sx={{ fontWeight: "bold" }}
+                      >
+                        {event.name}
+                      </Typography>
+                      <Box sx={{ mb: 1 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "rgba(255,255,255,0.9)" }}
+                        >
+                          <b>Start:</b> {formatDateTime(event.startDate)}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "rgba(255,255,255,0.9)" }}
+                        >
+                          <b>End:</b> {formatDateTime(event.endDate)}
+                        </Typography>
+                      </Box>
+                      {event.eventHosts && event.eventHosts.length > 0 && (
+                        <Box sx={{ mb: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{ color: "#ff6f61", fontWeight: "bold" }}
+                          >
+                            Host{event.eventHosts.length > 1 ? "s" : ""}:
+                          </Typography>
+                          {event.eventHosts.map((host, idx) => (
+                            <Typography
+                              key={idx}
+                              variant="body2"
+                              sx={{ color: "rgba(255,255,255,0.85)" }}
+                            >
+                              {host.name} {host.role && `(${host.role})`}{" "}
+                              {host.contact && `- ${host.contact}`}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                      <Box sx={{ mb: 2 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "rgba(255,255,255,0.9)" }}
+                        >
+                          📍 {event.venue}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          sx={{ color: "rgba(255,255,255,0.9)" }}
+                        >
+                          💰 {event.ticketPrice} {event.currency}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                        <Chip
+                          label={event.status}
+                          size="small"
+                          sx={{
+                            bgcolor:
+                              event.status === "published"
+                                ? "success.main"
+                                : "info.main",
+                            color: "white",
+                          }}
+                        />
+                        {event.tags &&
+                          event.tags.map((tag, index) => (
+                            <Chip
+                              key={index}
+                              label={tag}
+                              size="small"
+                              sx={{
+                                bgcolor: "rgba(255,255,255,0.1)",
+                                color: "white",
+                              }}
+                            />
+                          ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </DialogContent>
       </Dialog>
     </Box>
