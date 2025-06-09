@@ -1,17 +1,28 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import View from "./components/View";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import Layout from "./components/Layout";
+import StackedCardLayout from "./components/StackedCardLayout";
 
-function App() {
+const App = () => {
   return (
-    <div className="App">
-      <Router>
-        <Routes>
-          <Route path="/" element={<View />} />
-        </Routes>
-      </Router>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to="/vdjkush" replace />} />
+
+          <Route path="vdjkush" element={<StackedCardLayout />} />
+          <Route path="mixes" element={<StackedCardLayout />} />
+          <Route path="events" element={<StackedCardLayout />} />
+          <Route path="vibe" element={<StackedCardLayout />} />
+        </Route>
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;
