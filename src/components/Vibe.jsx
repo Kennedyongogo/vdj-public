@@ -18,6 +18,11 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SendIcon from "@mui/icons-material/Send";
 import CloseIcon from "@mui/icons-material/Close";
 
+const WS_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "ws://38.242.243.113:5035"
+    : "ws://localhost:3003";
+
 const Vibe = ({
   onNext,
   onPrev,
@@ -51,7 +56,7 @@ const Vibe = ({
       fetchMessages(); // Fetch chat history
 
       // Initialize WebSocket connection when dialog opens
-      const ws = new WebSocket("ws://localhost:3003/ws/chat");
+      const ws = new WebSocket(`${WS_BASE_URL}/ws/chat`);
 
       ws.onopen = () => {
         console.log("Connected to chat server");
