@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
   Typography,
@@ -7,8 +7,16 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
+  TextField,
+  Button,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import SendIcon from "@mui/icons-material/Send";
+import CloseIcon from "@mui/icons-material/Close";
 
 const Vibe = ({
   onNext,
@@ -20,9 +28,79 @@ const Vibe = ({
   navigate,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [socket, setSocket] = useState(null);
+  const messagesEndRef = useRef(null);
+
+  // Fetch chat history
+  const fetchMessages = async () => {
+    try {
+      const res = await fetch("http://localhost:3003/api/message");
+      const data = await res.json();
+      if (data.success) {
+        setMessages(data.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch messages:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (openDialog) {
+      fetchMessages(); // Fetch chat history
+
+      // Initialize WebSocket connection when dialog opens
+      const ws = new WebSocket("ws://localhost:3003/ws/chat");
+
+      ws.onopen = () => {
+        console.log("Connected to chat server");
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        setMessages((prev) => [...prev, message]);
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+
+      ws.onclose = () => {
+        console.log("Disconnected from chat server");
+      };
+
+      setSocket(ws);
+
+      return () => {
+        ws.close();
+      };
+    }
+  }, [openDialog]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleOpenDialog = () => setOpenDialog(true);
   const handleCloseDialog = () => setOpenDialog(false);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (newMessage.trim() && socket) {
+      const message = {
+        text: newMessage,
+        sender: "user",
+        timestamp: new Date().toISOString(),
+      };
+      socket.send(JSON.stringify(message));
+      setNewMessage("");
+    }
+  };
 
   return (
     <Box
@@ -233,7 +311,7 @@ const Vibe = ({
           </defs>
         </svg>
       </Box>
-      {/* Vibe Dialog */}
+      {/* Modified Vibe Dialog with Chat */}
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
@@ -245,6 +323,9 @@ const Vibe = ({
             color: "white",
             borderRadius: "16px",
             border: "1px solid rgba(255,255,255,0.1)",
+            height: "80vh",
+            display: "flex",
+            flexDirection: "column",
           },
         }}
       >
@@ -255,14 +336,108 @@ const Vibe = ({
             fontWeight: "bold",
             borderBottom: "1px solid rgba(255,255,255,0.1)",
             pb: 2,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          Vibe Dialog
+          Chat with Support
+          <IconButton
+            onClick={handleCloseDialog}
+            sx={{
+              color: "white",
+              "&:hover": {
+                backgroundColor: "rgba(255,255,255,0.1)",
+              },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
         </DialogTitle>
-        <DialogContent>
-          <Typography sx={{ color: "white", mt: 2 }}>
-            Vibe content will go here...
-          </Typography>
+        <DialogContent
+          sx={{ flex: 1, display: "flex", flexDirection: "column", p: 0 }}
+        >
+          <List
+            sx={{
+              flex: 1,
+              overflow: "auto",
+              p: 2,
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
+            }}
+          >
+            {messages.map((message, index) => (
+              <ListItem
+                key={index}
+                sx={{
+                  alignSelf:
+                    message.sender === "user" ? "flex-end" : "flex-start",
+                  maxWidth: "80%",
+                }}
+              >
+                <Paper
+                  elevation={1}
+                  sx={{
+                    p: 2,
+                    bgcolor:
+                      message.sender === "user" ? "primary.main" : "grey.800",
+                    borderRadius: 2,
+                  }}
+                >
+                  <Typography variant="body1">{message.text}</Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ display: "block", mt: 0.5, opacity: 0.7 }}
+                  >
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </Typography>
+                </Paper>
+              </ListItem>
+            ))}
+            <div ref={messagesEndRef} />
+          </List>
+          <Box
+            component="form"
+            onSubmit={handleSendMessage}
+            sx={{
+              p: 2,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+              display: "flex",
+              gap: 1,
+            }}
+          >
+            <TextField
+              fullWidth
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              variant="outlined"
+              size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  color: "white",
+                  "& fieldset": {
+                    borderColor: "rgba(255,255,255,0.2)",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "rgba(255,255,255,0.3)",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "primary.main",
+                  },
+                },
+              }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              endIcon={<SendIcon />}
+            >
+              Send
+            </Button>
+          </Box>
         </DialogContent>
       </Dialog>
     </Box>
