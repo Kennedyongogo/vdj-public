@@ -365,7 +365,8 @@ const Mixes = ({
                             sx={{ color: "rgba(255,255,255,0.5)" }}
                           >
                             Duration: {formatDuration(mix.duration)} |
-                            Downloads: {mix.downloadCount}
+                            Downloads: {mix.downloadCount} | Plays:{" "}
+                            {mix.playCount}
                           </Typography>
                         </Box>
                       }
@@ -375,11 +376,22 @@ const Mixes = ({
                         edge="end"
                         aria-label="play"
                         sx={{ color: "#19bdb7" }}
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          setCurrentMix(mix);
-                          setPlayModalOpen(true);
+                          try {
+                            // First, increment play count by fetching the specific mix
+                            await fetch(`${API_BASE_URL}/api/mix/${mix.id}`);
+
+                            // Then open the play modal
+                            setCurrentMix(mix);
+                            setPlayModalOpen(true);
+
+                            // Refresh the mixes list to update the play count
+                            await fetchMixes();
+                          } catch (error) {
+                            console.error("Error playing mix:", error);
+                          }
                         }}
                       >
                         <PlayArrowIcon />
