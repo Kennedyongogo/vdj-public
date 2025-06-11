@@ -220,8 +220,12 @@ const Mixes = ({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          mt: 2,
+          position: "absolute",
+          bottom: "140px",
+          left: 0,
+          right: 0,
           gap: 1,
+          zIndex: 2,
         }}
       >
         {paths &&

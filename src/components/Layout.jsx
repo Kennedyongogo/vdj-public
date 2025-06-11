@@ -38,6 +38,8 @@ const Layout = () => {
     { label: "VDJKush", path: "/vdjkush" },
     { label: "Mixes", path: "/mixes" },
     { label: "Events", path: "/events" },
+    { label: "Services", path: "/services" },
+    { label: "Archive", path: "/archive" },
     { label: "Vibe", path: "/vibe" },
   ];
 

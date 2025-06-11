@@ -18,6 +18,8 @@ const App = () => {
           <Route path="vdjkush" element={<StackedCardLayout />} />
           <Route path="mixes" element={<StackedCardLayout />} />
           <Route path="events" element={<StackedCardLayout />} />
+          <Route path="services" element={<StackedCardLayout />} />
+          <Route path="archive" element={<StackedCardLayout />} />
           <Route path="vibe" element={<StackedCardLayout />} />
         </Route>
       </Routes>

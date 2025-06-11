@@ -5,6 +5,8 @@ import VDJKush from "./VDJKush";
 import Mixes from "./Mixes";
 import Events from "./Events";
 import Vibe from "./Vibe";
+import Services from "./Services";
+import Archive from "./Archive";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
@@ -12,6 +14,8 @@ const components = {
   "/vdjkush": VDJKush,
   "/mixes": Mixes,
   "/events": Events,
+  "/services": Services,
+  "/archive": Archive,
   "/vibe": Vibe,
 };
 
@@ -19,11 +23,20 @@ const titles = {
   "/vdjkush": "VDJKush",
   "/mixes": "Mixes",
   "/events": "Events",
+  "/services": "Services",
+  "/archive": "Archive",
   "/vibe": "Vibe",
 };
 
 // Define paths in the same order as the navbar
-const paths = ["/vdjkush", "/mixes", "/events", "/vibe"];
+const paths = [
+  "/vdjkush",
+  "/mixes",
+  "/events",
+  "/services",
+  "/archive",
+  "/vibe",
+];
 const swipeConfidenceThreshold = 10000;
 
 const StackedCardLayout = () => {

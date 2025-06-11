@@ -209,14 +209,7 @@ const VDJKush = ({
           width: "100%",
         }}
       >
-        <Box
-          sx={{
-            flex: 2,
-            minWidth: 0,
-            position: "relative",
-            paddingBottom: "20px",
-          }}
-        >
+        <Box sx={{ flex: 2, minWidth: 0, position: "relative", pb: 6 }}>
           <Typography
             variant="h2"
             gutterBottom
@@ -279,7 +272,6 @@ const VDJKush = ({
               fontWeight: "bold",
               marginTop: "0.5rem",
               fontSize: "0.875rem",
-              mb: 4,
             }}
           >
             Slogan: Feel the Vibe. Live the Sound. Ride with Kush.
@@ -342,8 +334,12 @@ const VDJKush = ({
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          mt: 2,
+          position: "absolute",
+          bottom: "140px",
+          left: 0,
+          right: 0,
           gap: 1,
+          zIndex: 2,
         }}
       >
         {paths &&
