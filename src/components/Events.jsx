@@ -190,16 +190,31 @@ const Events = ({
             border: "1px solid rgba(255,255,255,0.15)",
             boxShadow: 3,
             height: 320,
+            overflow: "hidden",
+            p: 0,
           }}
         >
-          <Typography
-            variant="subtitle1"
-            sx={{ color: "#bbb", textAlign: "center" }}
+          <Box
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            Events Image
-            <br />
-            (Coming Soon)
-          </Typography>
+            <img
+              src="/events.jpg"
+              alt="Events Image"
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                borderRadius: "12px",
+                display: "block",
+              }}
+            />
+          </Box>
         </Card>
       </Box>
 
