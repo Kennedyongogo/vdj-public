@@ -23,6 +23,11 @@ const WS_BASE_URL =
     ? "ws://38.242.243.113:5035"
     : "ws://localhost:3003";
 
+const API_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "http://38.242.243.113:5035"
+    : "http://localhost:3003";
+
 const Vibe = ({
   onNext,
   onPrev,
@@ -41,7 +46,7 @@ const Vibe = ({
   // Fetch chat history
   const fetchMessages = async () => {
     try {
-      const res = await fetch("http://localhost:3003/api/message");
+      const res = await fetch(`${API_BASE_URL}/api/message`);
       const data = await res.json();
       if (data.success) {
         setMessages(data.data);

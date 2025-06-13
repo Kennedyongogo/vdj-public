@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -8,8 +8,16 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
+  TextField,
+  CircularProgress,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import Swal from "sweetalert2";
+
+const API_BASE_URL =
+  process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
 const Services = ({
   onNext,
@@ -21,6 +29,83 @@ const Services = ({
   navigate,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    type: "",
+    duration: "",
+    isActive: true,
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    eventDate: "",
+  });
+  const [selectedService, setSelectedService] = useState(null);
+
+  useEffect(() => {
+    if (openDialog) {
+      setLoading(true);
+      fetch(`${API_BASE_URL}/api/service`)
+        .then((res) => res.json())
+        .then((data) => setServices(data.data || []))
+        .catch(() => setServices([]))
+        .finally(() => setLoading(false));
+    }
+  }, [openDialog]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/service`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Your service has been created successfully",
+        });
+        setOpenDialog(false);
+        setFormData({
+          name: "",
+          description: "",
+          type: "",
+          duration: "",
+          isActive: true,
+          contactName: "",
+          contactEmail: "",
+          contactPhone: "",
+          eventDate: "",
+        });
+      } else {
+        throw new Error(data.message || "Failed to create service");
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: error.message || "Failed to create service. Please try again.",
+      });
+    }
+  };
 
   return (
     <Box
@@ -304,9 +389,290 @@ const Services = ({
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: "white", textAlign: "center", mt: 4 }}>
-            Booking form coming soon...
-          </Typography>
+          {loading ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 200,
+              }}
+            >
+              <CircularProgress color="inherit" />
+            </Box>
+          ) : (
+            <Box sx={{ mt: 4 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  justifyContent: "center",
+                  mb: 4,
+                }}
+              >
+                {services.map((service) => (
+                  <Card
+                    key={service.id}
+                    onClick={() => setSelectedService(service)}
+                    sx={{
+                      width: 280,
+                      cursor: "pointer",
+                      background:
+                        selectedService?.id === service.id
+                          ? "rgba(255,255,255,0.15)"
+                          : "rgba(30,30,30,0.85)",
+                      border:
+                        selectedService?.id === service.id
+                          ? "2px solid #6a82fb"
+                          : "1px solid rgba(255,255,255,0.15)",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        background: "rgba(255,255,255,0.1)",
+                      },
+                    }}
+                  >
+                    <Box sx={{ p: 2 }}>
+                      <Typography variant="h6" sx={{ color: "#fff", mb: 1 }}>
+                        {service.name}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#fff", mb: 1 }}>
+                        {service.description}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#fff" }}>
+                        Duration: {service.duration} hours
+                      </Typography>
+                    </Box>
+                  </Card>
+                ))}
+              </Box>
+
+              <form onSubmit={handleSubmit}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 2,
+                    maxWidth: 600,
+                    mx: "auto",
+                  }}
+                >
+                  <TextField
+                    required
+                    fullWidth
+                    label="Service Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label="Description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <Select
+                    required
+                    fullWidth
+                    label="Service Type"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                    displayEmpty
+                    sx={{
+                      color: "white",
+                      bgcolor: "rgba(30,30,30,0.85)",
+                      borderRadius: 1,
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(255,255,255,0.3)",
+                      },
+                      "&:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "rgba(255,255,255,0.5)",
+                      },
+                      "& .MuiSvgIcon-root": {
+                        color: "white",
+                      },
+                    }}
+                    inputProps={{
+                      name: "type",
+                      id: "service-type-select",
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>Select a type</em>
+                    </MenuItem>
+                    <MenuItem value="WEDDING">Wedding</MenuItem>
+                    <MenuItem value="CORPORATE">Corporate</MenuItem>
+                    <MenuItem value="PRIVATE_PARTY">Private Party</MenuItem>
+                    <MenuItem value="CLUB_EVENT">Club Event</MenuItem>
+                    <MenuItem value="CUSTOM_MIX">Custom Mix</MenuItem>
+                  </Select>
+                  <TextField
+                    required
+                    fullWidth
+                    label="Duration (hours)"
+                    name="duration"
+                    type="number"
+                    value={formData.duration}
+                    onChange={handleInputChange}
+                    inputProps={{ min: 1 }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Your Name"
+                    name="contactName"
+                    value={formData.contactName}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Email"
+                    name="contactEmail"
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Phone Number"
+                    name="contactPhone"
+                    value={formData.contactPhone}
+                    onChange={handleInputChange}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <TextField
+                    required
+                    fullWidth
+                    label="Event Date"
+                    name="eventDate"
+                    type="date"
+                    value={formData.eventDate}
+                    onChange={handleInputChange}
+                    InputLabelProps={{ shrink: true }}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        color: "white",
+                        "& fieldset": {
+                          borderColor: "rgba(255,255,255,0.3)",
+                        },
+                        "&:hover fieldset": {
+                          borderColor: "rgba(255,255,255,0.5)",
+                        },
+                      },
+                      "& .MuiInputLabel-root": {
+                        color: "rgba(255,255,255,0.7)",
+                      },
+                    }}
+                  />
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    fullWidth
+                    sx={{
+                      mt: 2,
+                      bgcolor: "#6a82fb",
+                      color: "white",
+                      "&:hover": {
+                        bgcolor: "#5a72eb",
+                      },
+                    }}
+                  >
+                    Create Service
+                  </Button>
+                </Box>
+              </form>
+            </Box>
+          )}
         </DialogContent>
       </Dialog>
     </Box>

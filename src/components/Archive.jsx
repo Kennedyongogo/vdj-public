@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -10,6 +10,13 @@ import {
   IconButton,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import CardContent from "@mui/material/CardContent";
+import CardMedia from "@mui/material/CardMedia";
+import PlayIcon from "@mui/icons-material/PlayArrow";
+import CircularProgress from "@mui/material/CircularProgress";
+
+const API_BASE_URL =
+  process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
 const Archive = ({
   onNext,
@@ -21,6 +28,24 @@ const Archive = ({
   navigate,
 }) => {
   const [openDialog, setOpenDialog] = useState(false);
+  const [archives, setArchives] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [mediaModal, setMediaModal] = useState({
+    open: false,
+    type: null,
+    src: null,
+  });
+
+  useEffect(() => {
+    if (openDialog) {
+      setLoading(true);
+      fetch(`${API_BASE_URL}/api/archive`)
+        .then((res) => res.json())
+        .then((data) => setArchives(data.data || []))
+        .catch(() => setArchives([]))
+        .finally(() => setLoading(false));
+    }
+  }, [openDialog]);
 
   return (
     <Box
@@ -289,7 +314,7 @@ const Archive = ({
             position: "relative",
           }}
         >
-          Event Archive
+          Event Archives
           <IconButton
             aria-label="close"
             onClick={() => setOpenDialog(false)}
@@ -304,9 +329,212 @@ const Archive = ({
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ color: "white", textAlign: "center", mt: 4 }}>
-            Archive content coming soon...
-          </Typography>
+          {loading ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: 200,
+              }}
+            >
+              <CircularProgress color="inherit" />
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 2,
+                justifyContent: "center",
+              }}
+            >
+              {archives.length === 0 ? (
+                <Typography sx={{ color: "white", textAlign: "center", mt: 4 }}>
+                  No archives found.
+                </Typography>
+              ) : (
+                archives.map((archive) => (
+                  <Card
+                    key={archive.id}
+                    sx={{
+                      width: 320,
+                      m: 1,
+                      background: "rgba(30,30,30,0.85)",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      boxShadow: 3,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {/* Gallery */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        overflowX: "auto",
+                        height: 140,
+                        background: "#f5f5f5",
+                        gap: 1,
+                        p: 1,
+                      }}
+                    >
+                      {/* Images Gallery */}
+                      {archive.images &&
+                        archive.images.map((img, idx) => (
+                          <Box
+                            key={img}
+                            sx={{
+                              minWidth: 120,
+                              maxWidth: 140,
+                              height: 120,
+                              position: "relative",
+                              cursor: "pointer",
+                            }}
+                            onClick={() =>
+                              setMediaModal({
+                                open: true,
+                                type: "image",
+                                src: `${API_BASE_URL}${img}`,
+                              })
+                            }
+                          >
+                            <CardMedia
+                              component="img"
+                              image={`${API_BASE_URL}${img}`}
+                              alt={archive.eventName + " image " + (idx + 1)}
+                              sx={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                borderRadius: 1,
+                              }}
+                            />
+                          </Box>
+                        ))}
+                      {/* Videos Gallery */}
+                      {archive.videos &&
+                        archive.videos.map((vid, idx) => (
+                          <Box
+                            key={vid}
+                            sx={{
+                              minWidth: 120,
+                              maxWidth: 140,
+                              height: 120,
+                              position: "relative",
+                              cursor: "pointer",
+                            }}
+                            onClick={() =>
+                              setMediaModal({
+                                open: true,
+                                type: "video",
+                                src: `${API_BASE_URL}${vid}`,
+                              })
+                            }
+                          >
+                            <CardMedia
+                              component="video"
+                              src={`${API_BASE_URL}${vid}`}
+                              sx={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                                borderRadius: 1,
+                              }}
+                              controls={false}
+                              muted
+                            />
+                            <Box
+                              sx={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                width: "100%",
+                                height: "100%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                pointerEvents: "none",
+                              }}
+                            >
+                              <PlayIcon
+                                sx={{
+                                  fontSize: 32,
+                                  color: "#fff",
+                                  opacity: 0.8,
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        ))}
+                    </Box>
+                    <CardContent
+                      sx={{ background: "#222", color: "#fff", flexGrow: 1 }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{ fontWeight: 600, color: "#fff" }}
+                      >
+                        {archive.eventName}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#fff" }}>
+                        {archive.description}
+                      </Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <Typography variant="caption" sx={{ color: "#fff" }}>
+                          Venue: {archive.venue}
+                        </Typography>
+                        <br />
+                        <Typography variant="caption" sx={{ color: "#fff" }}>
+                          Date:{" "}
+                          {new Date(archive.eventDate).toLocaleDateString()}
+                        </Typography>
+                        <br />
+                        <Typography variant="caption" sx={{ color: "#fff" }}>
+                          Location: {archive.location}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </Box>
+          )}
+          {/* Media Modal */}
+          <Dialog
+            open={mediaModal.open}
+            onClose={() =>
+              setMediaModal({ open: false, type: null, src: null })
+            }
+            maxWidth="md"
+          >
+            <DialogContent sx={{ p: 0, background: "#000" }}>
+              {mediaModal.type === "image" ? (
+                <img
+                  src={mediaModal.src}
+                  alt="Event Media"
+                  style={{
+                    maxWidth: "90vw",
+                    maxHeight: "80vh",
+                    display: "block",
+                    margin: "auto",
+                  }}
+                />
+              ) : mediaModal.type === "video" ? (
+                <video
+                  src={mediaModal.src}
+                  controls
+                  autoPlay
+                  style={{
+                    maxWidth: "90vw",
+                    maxHeight: "80vh",
+                    display: "block",
+                    margin: "auto",
+                  }}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
         </DialogContent>
       </Dialog>
     </Box>

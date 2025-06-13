@@ -26,6 +26,29 @@ import CloseIcon from "@mui/icons-material/Close";
 const API_BASE_URL =
   process.env.NODE_ENV === "production" ? "http://38.242.243.113:5035" : "";
 
+const FloatingHeart = ({ onAnimationEnd }) => {
+  return (
+    <Box
+      sx={{
+        position: "absolute",
+        animation: "floatHeart 1s ease-out forwards",
+        "@keyframes floatHeart": {
+          "0%": {
+            transform: "translateY(0) scale(1)",
+            opacity: 1,
+          },
+          "100%": {
+            transform: "translateY(-50px) scale(1.5)",
+            opacity: 0,
+          },
+        },
+      }}
+    >
+      <FavoriteIcon sx={{ color: "#ff4081" }} />
+    </Box>
+  );
+};
+
 const VDJKush = ({
   onNext,
   onPrev,
@@ -53,6 +76,7 @@ const VDJKush = ({
   const [commentLoading, setCommentLoading] = useState({});
   const [expandedComments, setExpandedComments] = useState({});
   const [loadingTrending, setLoadingTrending] = useState(false);
+  const [animatingHearts, setAnimatingHearts] = useState({});
 
   useEffect(() => {
     if (openDialog) {
@@ -89,6 +113,14 @@ const VDJKush = ({
   );
 
   const handleLike = async (id) => {
+    // Add animation heart
+    setAnimatingHearts((prev) => ({ ...prev, [id]: true }));
+
+    // Remove animation after 1s
+    setTimeout(() => {
+      setAnimatingHearts((prev) => ({ ...prev, [id]: false }));
+    }, 1000);
+
     // Optimistically update the trending count in the UI
     setTrending((prev) =>
       prev.map((item) =>
@@ -497,12 +529,21 @@ const VDJKush = ({
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       {item.content?.description}
                     </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 2,
+                        position: "relative",
+                      }}
+                    >
                       <IconButton
                         onClick={() => handleLike(item.id)}
                         disabled={likeLoading[item.id]}
+                        sx={{ position: "relative" }}
                       >
-                        <FavoriteIcon />
+                        <FavoriteIcon sx={{ color: "#ff4081" }} />
+                        {animatingHearts[item.id] && <FloatingHeart />}
                       </IconButton>
                       <Typography variant="caption">
                         {item.likeCount || 0} likes • {item.commentCount || 0}{" "}
